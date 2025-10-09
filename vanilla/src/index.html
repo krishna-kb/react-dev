@@ -10,6 +10,8 @@
     <div id="app">
         <aside id="sidebar">
             <h2>Scripts</h2>
+            <button data-script="run-all" class="run-all-button">Run All Scripts</button>
+            <hr>
             <button data-script="test">test</button>
             <button data-script="lint">lint</button>
             <button data-script="build">build</button>
@@ -17,6 +19,7 @@
             <button data-script="stress-test">stress-test</button>
         </aside>
         <main id="terminal">
+            <input type="search" id="log-search" placeholder="Search all logs...">
             <!-- Task outputs will be appended here -->
         </main>
     </div>

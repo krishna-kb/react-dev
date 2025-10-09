@@ -1,17 +1,31 @@
 // Type definition for a task's status
 type TaskStatus = 'Running' | 'Succeeded' | 'Failed';
 
-// Interface for a task object (though we'll be writing to the DOM directly)
+// Interface for a task object
 interface Task {
     id: string;
     name: string;
     status: TaskStatus;
     log: string;
+    startTime?: number;
+    endTime?: number;
 }
 
 const sidebar = document.getElementById('sidebar')!;
 const terminal = document.getElementById('terminal')!;
 let taskIdCounter = 0;
+const runningTimers = new Map<string, number>(); // Map to store interval IDs
+
+/**
+ * Appends a new log line to a task's output element.
+ * @param logElement The <pre> element for the task's output.
+ * @param line The text content of the log line.
+ */
+function appendLog(logElement: HTMLElement, line: string) {
+    const lineElement = document.createElement('div');
+    lineElement.textContent = line;
+    logElement.appendChild(lineElement);
+}
 
 /**
  * Handles clicks on the script buttons in the sidebar.
@@ -20,7 +34,15 @@ sidebar.addEventListener('click', (event) => {
     const target = event.target as HTMLElement;
     if (target.tagName === 'BUTTON') {
         const scriptName = target.dataset.script;
-        if (scriptName) {
+        if (scriptName === 'run-all') {
+            const scriptButtons = sidebar.querySelectorAll<HTMLButtonElement>('button:not([data-script="run-all"])');
+            scriptButtons.forEach(button => {
+                const name = button.dataset.script;
+                if (name) {
+                    runScript(name);
+                }
+            });
+        } else if (scriptName) {
             runScript(scriptName);
         }
     }
@@ -37,17 +59,23 @@ function runScript(scriptName: string): void {
         name: scriptName,
         status: 'Running',
         log: '',
+        startTime: Date.now(),
     };
 
-    // 1. Create the initial task element and add it to the terminal
     createTaskElement(task);
 
-    // 2. Simulate script execution
+    const timerElement = document.querySelector(`#${taskId} .task-timer`) as HTMLElement;
+    const intervalId = window.setInterval(() => {
+        const elapsedTime = (Date.now() - task.startTime!) / 1000;
+        timerElement.textContent = `Running for ${elapsedTime.toFixed(2)}s`;
+    }, 50);
+    runningTimers.set(taskId, intervalId);
+
     simulateScript(task);
 }
 
 /**
- * Creates the DOM elements for a new task and appends them to the terminal.
+ * Creates the DOM elements for a new task.
  * @param task The task object.
  */
 function createTaskElement(task: Task): void {
@@ -57,39 +85,49 @@ function createTaskElement(task: Task): void {
 
     taskElement.innerHTML = `
         <div class="task-header">
-            <span class="task-name">${task.name}</span>
-            <span class="task-status">🟡 Running</span>
+            <span class="task-toggle">►</span>
+            <span class="task-name"></span>
+            <span class="task-timer"></span>
         </div>
-        <div class="task-output">
+        <div class="task-output" style="display: none;">
             <pre></pre>
         </div>
     `;
+    
+    const header = taskElement.querySelector('.task-header')!;
+    header.setAttribute('data-name', task.name);
+
+    const statusIcon = task.status === 'Running' ? '🟡' : '';
+    taskElement.querySelector('.task-name')!.textContent = `${statusIcon} ${task.name}`;
+
+    header.addEventListener('click', () => {
+        const output = taskElement.querySelector('.task-output') as HTMLElement;
+        const toggle = header.querySelector('.task-toggle') as HTMLElement;
+        const isCollapsed = output.style.display === 'none';
+        output.style.display = isCollapsed ? 'block' : 'none';
+        toggle.textContent = isCollapsed ? '▼' : '►';
+    });
 
     terminal.appendChild(taskElement);
-    // Scroll to the bottom to show the new task
     terminal.scrollTop = terminal.scrollHeight;
 }
 
 /**
- * Simulates the execution of a script and updates the UI upon completion.
+ * Simulates the execution of a script.
  * @param task The task to simulate.
  */
 function simulateScript(task: Task): void {
-    const { id, name } = task;
+    const { id, name, startTime } = task;
     let duration = 2000;
     let willFail = false;
     let initialLog = '';
 
     switch (name) {
-        case 'test':
-            duration = 2000;
-            break;
-        case 'lint':
-            duration = 3000;
-            break;
+        case 'test': duration = 2000; break;
+        case 'lint': duration = 3000; break;
         case 'build':
             duration = 5000;
-            initialLog = 'Build process started...\n';
+            initialLog = 'Build process started...';
             break;
         case 'deploy':
             duration = 6000;
@@ -97,22 +135,20 @@ function simulateScript(task: Task): void {
             break;
         case 'stress-test':
             duration = 4000;
-            // Handle the stress test logging separately
             runStressTest(id);
             break;
     }
 
-    // Set initial log for scripts that have one
+    const taskElement = document.getElementById(id)!;
+    const logElement = taskElement.querySelector('.task-output pre')! as HTMLElement;
+
     if (initialLog) {
-        const taskElement = document.getElementById(id)!;
-        const logElement = taskElement.querySelector('.task-output pre')!;
-        logElement.innerHTML = initialLog;
+        appendLog(logElement, initialLog);
     }
 
-    // Don't run the final update for the stress test here, as it has its own logic
     if (name === 'stress-test') {
         setTimeout(() => {
-            updateTaskStatus(id, 'Succeeded', '');
+            updateTaskStatus(id, 'Succeeded', '', startTime!);
         }, duration);
         return;
     }
@@ -120,68 +156,82 @@ function simulateScript(task: Task): void {
     setTimeout(() => {
         const finalStatus: TaskStatus = willFail ? 'Failed' : 'Succeeded';
         const finalLog = willFail ? 'Deployment failed.' : `Script '${name}' finished.`;
-        updateTaskStatus(id, finalStatus, finalLog);
+        updateTaskStatus(id, finalStatus, finalLog, startTime!);
     }, duration);
 }
 
 /**
- * Handles the special case for the stress test to demonstrate inefficient DOM updates.
+ * Handles the stress test logging.
  * @param taskId The ID of the stress test task.
  */
 function runStressTest(taskId: string): void {
     const taskElement = document.getElementById(taskId)!;
-    const logElement = taskElement.querySelector('.task-output pre')!;
-    let logContent = '';
-
+    const logElement = taskElement.querySelector('.task-output pre')! as HTMLElement;
     for (let i = 1; i <= 5000; i++) {
-        // Inefficiently update innerHTML in a loop
-        logContent += `Generating log line ${i}...\n`;
-        logElement.innerHTML = logContent;
+        appendLog(logElement, `Generating log line ${i}...`);
     }
 }
 
 /**
- * Finds a task's DOM element by its ID and updates its status and log output.
+ * Updates a task's status in the DOM.
  * @param taskId The ID of the task to update.
  * @param status The new status.
- * @param log The final log message to append.
+ * @param log The final log message.
+ * @param startTime The start time of the task.
  */
-function updateTaskStatus(taskId: string, status: TaskStatus, log: string): void {
+function updateTaskStatus(taskId: string, status: TaskStatus, log: string, startTime: number): void {
     const taskElement = document.getElementById(taskId);
     if (!taskElement) return;
 
-    const statusElement = taskElement.querySelector('.task-status')!;
-    const logElement = taskElement.querySelector('.task-output pre')!;
+    const intervalId = runningTimers.get(taskId);
+    if (intervalId) {
+        clearInterval(intervalId);
+        runningTimers.delete(taskId);
+    }
 
-    let statusText = '';
+    const headerElement = taskElement.querySelector('.task-header')!;
+    const taskNameElement = taskElement.querySelector('.task-name')!;
+    const logElement = taskElement.querySelector('.task-output pre')! as HTMLElement;
+    const timerElement = taskElement.querySelector('.task-timer')!;
+    const taskName = headerElement.getAttribute('data-name')!;
+
+    const endTime = Date.now();
+    const duration = (endTime - startTime) / 1000;
+    timerElement.textContent = `Completed in ${duration.toFixed(2)}s`;
+
+    let statusIcon = '';
     let statusClass = '';
 
     switch (status) {
-        case 'Succeeded':
-            statusText = '✅ Succeeded';
-            statusClass = 'task-succeeded';
-            break;
-        case 'Failed':
-            statusText = '❌ Failed';
-            statusClass = 'task-failed';
-            break;
-        case 'Running':
-            // This case is handled on creation, but included for completeness
-            statusText = '🟡 Running';
-            statusClass = 'task-running';
-            break;
+        case 'Succeeded': statusIcon = '✅'; statusClass = 'task-succeeded'; break;
+        case 'Failed': statusIcon = '❌'; statusClass = 'task-failed'; break;
+        case 'Running': statusIcon = '🟡'; statusClass = 'task-running'; break;
     }
 
-    // Update class and text
     taskElement.className = `task ${statusClass}`;
-    statusElement.textContent = statusText;
+    taskNameElement.textContent = `${statusIcon} ${taskName}`;
 
-    // Append final log message
     if (log) {
-        logElement.innerHTML += log;
+        appendLog(logElement, log);
     }
     
-    // Scroll the log to the bottom
-    const outputContainer = taskElement.querySelector('.task-output')!;
+    const outputContainer = taskElement.querySelector('.task-output')! as HTMLElement;
     outputContainer.scrollTop = outputContainer.scrollHeight;
 }
+
+// --- Real-time Log Search Filter ---
+const searchInput = document.getElementById('log-search') as HTMLInputElement;
+
+searchInput.addEventListener('input', () => {
+    const searchTerm = searchInput.value.toLowerCase();
+    const logLines = document.querySelectorAll<HTMLElement>('.task-output pre > div');
+
+    logLines.forEach(line => {
+        const lineText = line.textContent?.toLowerCase() || '';
+        if (lineText.includes(searchTerm)) {
+            line.style.display = 'block';
+        } else {
+            line.style.display = 'none';
+        }
+    });
+});

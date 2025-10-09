@@ -4,13 +4,14 @@
   "description": "A simple web app to demonstrate manual DOM manipulation.",
   "main": "main.js",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "start": "tsc && echo 'Project built. Please open index.html in your browser.'"
+    "build": "tsc && cp src/*.html build/ && cp src/*.css build/",
+    "start": "node server.js",
+    "dev": "tsc --watch & node server.js"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "express": "^5.1.0",
     "typescript": "^5.0.0"
   }
 }
