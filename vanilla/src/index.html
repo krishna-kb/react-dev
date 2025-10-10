@@ -3,31 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanilla JS Table</title>
+    <title>Vanilla JS Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
-        <h1>Vanilla Table</h1>
-        <div class="controls">
-            <input type="search" id="search-input" placeholder="Search...">
+    <div id="chat-container">
+        <div id="chat-window">
+            <div class="message ai"><span>Hello! I am a mock AI.</span></div>
         </div>
-        <table id="data-table">
-            <thead>
-                <tr>
-                    <th data-sort-key="id">ID</th>
-                    <th data-sort-key="firstName">First Name</th>
-                    <th data-sort-key="lastName">Last Name</th>
-                    <th data-sort-key="email">Email</th>
-                    <th data-sort-key="city">City</th>
-                    <th data-sort-key="country">Country</th>
-                    <th data-sort-key="jobTitle">Job Title</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Rows will be inserted here -->
-            </tbody>
-        </table>
+        <form id="chat-form">
+            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" required>
+            <button type="submit">Send</button>
+        </form>
     </div>
     <script src="main.js"></script>
 </body>

@@ -1,88 +1,37 @@
-interface User {
-    id: number;
-    firstName: string;
-    lastName: string;
-    email: string;
-    city: string;
-    country: string;
-    jobTitle: string;
-}
+const chatWindow = document.getElementById('chat-window')!;
+const chatForm = document.getElementById('chat-form')!;
+const messageInput = document.getElementById('message-input') as HTMLInputElement;
 
-let data: User[] = [];
-let sortedData: User[] = [];
-let sortKey: keyof User = 'id';
-let sortAsc = true;
+chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = messageInput.value.trim();
+    if (!message) return;
 
-const tableBody = document.querySelector<HTMLTableSectionElement>('#data-table tbody')!;
-const searchInput = document.querySelector<HTMLInputElement>('#search-input')!;
-const tableHeaders = document.querySelectorAll<HTMLTableCellElement>('#data-table th');
+    appendMessage(message, 'user');
+    messageInput.value = '';
 
-async function fetchData() {
     try {
-        const response = await fetch('http://localhost:3002/api/users');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        data = await response.json();
-        sortedData = [...data];
-        renderTable(sortedData);
+        const response = await fetch('http://localhost:3003/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+        });
+        const data = await response.json();
+        appendMessage(data.message, 'ai');
     } catch (error) {
-        console.error("Failed to fetch data:", error);
-        tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Failed to load data. Is the API server running?</td></tr>`;
+        console.error('Error fetching AI response:', error);
+        appendMessage('Sorry, something went wrong.', 'ai');
     }
-}
-
-function renderTable(dataToRender: User[]) {
-    const rows = dataToRender.map(user => `
-        <tr>
-            <td>${user.id}</td>
-            <td>${user.firstName}</td>
-            <td>${user.lastName}</td>
-            <td>${user.email}</td>
-            <td>${user.city}</td>
-            <td>${user.country}</td>
-            <td>${user.jobTitle}</td>
-        </tr>
-    `);
-    tableBody.innerHTML = rows.join('');
-}
-
-fetchData();
-
-searchInput.addEventListener('input', () => {
-    const searchTerm = searchInput.value.toLowerCase();
-    const filteredData = sortedData.filter(user =>
-        Object.values(user).some(value =>
-            String(value).toLowerCase().includes(searchTerm)
-        )
-    );
-    renderTable(filteredData);
 });
 
-tableHeaders.forEach(header => {
-    header.addEventListener('click', () => {
-        const newSortKey = header.dataset.sortKey as keyof User;
-        if (sortKey === newSortKey) {
-            sortAsc = !sortAsc;
-        } else {
-            sortKey = newSortKey;
-            sortAsc = true;
-        }
-        sortData();
-        renderTable(sortedData);
-    });
-});
+function appendMessage(text: string, sender: 'user' | 'ai') {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message', sender);
+    
+    const span = document.createElement('span');
+    span.textContent = text;
+    messageElement.appendChild(span);
 
-function sortData() {
-    sortedData.sort((a, b) => {
-        const valA = a[sortKey];
-        const valB = b[sortKey];
-        if (valA < valB) {
-            return sortAsc ? -1 : 1;
-        }
-        if (valA > valB) {
-            return sortAsc ? 1 : -1;
-        }
-        return 0;
-    });
+    chatWindow.appendChild(messageElement);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
 }

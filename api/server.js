@@ -1,30 +1,30 @@
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const port = 3002;
+const port = 3003;
 
 app.use(cors());
+app.use(express.json());
 
-const generateMockData = () => {
-    const mockData = [];
-    for (let i = 1; i <= 5000; i++) {
-        mockData.push({
-            id: i,
-            firstName: `FirstName${i}`,
-            lastName: `LastName${i}`,
-            email: `user${i}@example.com`,
-            city: `City${i % 100}`,
-            country: `Country${i % 20}`,
-            jobTitle: `JobTitle${i % 50}`
-        });
-    }
-    return mockData;
-};
+const gibberish = [
+    "Blork zorp flibbertigibbet.",
+    "Glim-glam snoo-snoo.",
+    "Floop dee-doop.",
+    "Zibble-zabble wibble-wobble.",
+    "Snicker-snack, a-flumph.",
+    "Quibble-quabble, a-fizz.",
+    "Zorp! Gloop. Bleep.",
+    "Wobbledy-wobbledy, a-splat.",
+];
 
-app.get('/api/users', (req, res) => {
-    res.json(generateMockData());
+app.post('/api/chat', (req, res) => {
+    // We don't use the request body, just return a random gibberish response
+    setTimeout(() => {
+        const randomIndex = Math.floor(Math.random() * gibberish.length);
+        res.json({ message: gibberish[randomIndex] });
+    }, 500); // Simulate network delay
 });
 
 app.listen(port, () => {
-  console.log(`API server listening at http://localhost:${port}`);
+  console.log(`Chat API server listening at http://localhost:${port}`);
 });
