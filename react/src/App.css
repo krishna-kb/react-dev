@@ -6,6 +6,10 @@ body {
     height: 100vh;
 }
 
+body *{
+    transition: background-color 200ms linear;
+}
+
 #root {
     width: 100vw;
 }
@@ -22,15 +26,22 @@ body {
 
 .header {
     padding: 10px 20px;
-    background-color: #f8f9fa;
     border-bottom: 1px solid #ddd;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .header h1 {
     margin: 0;
     font-size: 1.2em;
     font-weight: 600;
+}
+
+.header #theme-toggle{
+    justify-self: flex-end;
+    text-transform: capitalize;
 }
 
 #chat-window {

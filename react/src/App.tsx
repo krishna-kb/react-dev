@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./App.css";
+import { ChatHeader } from "./components/ChatHeader";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
+import type { Theme } from "./types";
 
 interface MessageData {
   id: number;
@@ -15,6 +17,7 @@ const API_ENDPOINT = "http://localhost:3000";
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<MessageData[]>([]);
+  const [theme, setTheme] = useState<Theme>("light");
   const lastTimestampRef = useRef<number>(0);
 
   // Effect for initial history load
@@ -87,11 +90,14 @@ const App: React.FC = () => {
 
   return (
     <div id="chat-container">
-      <div className="header">
-        <h1>React Chat</h1>
-      </div>
-      <ChatWindow messages={messages} selfSenderId={SENDER_ID} />
-      <MessageInput onSendMessage={handleSendMessage} />
+      <ChatHeader
+        theme={theme}
+        onThemeClick={() => {
+          setTheme(theme === "light" ? "dark" : "light");
+        }}
+      />
+      <ChatWindow theme={theme} messages={messages} selfSenderId={SENDER_ID} />
+      <MessageInput theme={theme} onSendMessage={handleSendMessage} />
     </div>
   );
 };
