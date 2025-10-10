@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { MemoizedRow } from './Row'; // Import the new component
 
 interface User {
     id: number;
@@ -91,15 +92,7 @@ const DataTable: React.FC = () => {
                 </thead>
                 <tbody>
                     {filteredData.map(user => (
-                        <tr key={user.id}>
-                            <td>{user.id}</td>
-                            <td>{user.firstName}</td>
-                            <td>{user.lastName}</td>
-                            <td>{user.email}</td>
-                            <td>{user.city}</td>
-                            <td>{user.country}</td>
-                            <td>{user.jobTitle}</td>
-                        </tr>
+                        <MemoizedRow key={user.id} user={user} />
                     ))}
                 </tbody>
             </table>
