@@ -7,21 +7,25 @@ app.use(cors());
 app.use(express.json());
 
 // --- In-Memory Storage for Chat Histories ---
-const chatHistories = {
-    // Example:
-    // 'vanilla': [{ text: '...', sender: '...' }],
-    // 'react': [{ text: '...', sender: '...' }]
-};
+const chatHistories = {};
 
-// --- Mock Data ---
+// --- Expanded Mock Data ---
 const gibberish = [
     "Blork zorp flibbertigibbet.", "Glim-glam snoo-snoo.", "Floop dee-doop.",
     "Zibble-zabble wibble-wobble.", "Snicker-snack, a-flumph.", "Quibble-quabble, a-fizz.",
-    "Zorp! Gloop. Bleep.", "Wobbledy-wobbledy, a-splat.",
+    "Zorp! Gloop. Bleep.", "Wobbledy-wobbledy, a-splat.", "Flibbertigibbet nonsense.",
+    "The snozzberries taste like snozzberries!", "A wild plumbus appeared!",
+    "Gazorpazorpfield is not amused.", "Wubba lubba dub dub!", "Squanchy squanches squanchily.",
+    "The froods are hoopy.", "Don't panic.", "Time is an illusion. Lunchtime doubly so.",
+    "So long, and thanks for all the fish.", "The answer is 42.", "Mostly harmless.",
 ];
+
 const userMessages = [
-    "Tell me more.", "How does that work?", "Interesting.",
-    "Can you elaborate?", "Okay, what's next?", "I see.",
+    "Tell me more.", "How does that work?", "Interesting.", "Can you elaborate?",
+    "Okay, what's next?", "I see.", "What do you mean by that?", "Could you explain it differently?",
+    "That's fascinating.", "Why is that the case?", "And then what happened?",
+    "Is that always true?", "Let's move on.", "What are the implications?",
+    "I'm not sure I follow.", "Can you give me an example?", "That makes sense.",
 ];
 
 // --- Helper to generate a new history ---
@@ -62,22 +66,18 @@ app.post('/api/chat', (req, res) => {
         return res.status(400).json({ error: 'sessionId and message are required' });
     }
 
-    // Ensure history exists
     if (!chatHistories[sessionId]) {
         chatHistories[sessionId] = [];
     }
 
-    // Add user message to history
     chatHistories[sessionId].push({ text: message, sender: 'user' });
 
-    // Generate and add AI response
     const aiResponse = gibberish[Math.floor(Math.random() * gibberish.length)];
     chatHistories[sessionId].push({ text: aiResponse, sender: 'ai' });
 
-    // Send back only the new AI response
     setTimeout(() => {
         res.json({ message: aiResponse });
-    }, 500); // Simulate network delay
+    }, 500);
 });
 
 app.listen(port, () => {
