@@ -1,122 +1,71 @@
-import React, { useState } from 'react';
-import ScriptList from './components/ScriptList';
-import Terminal from './components/Terminal';
-import type { Task } from './types';
+import React, { useEffect, useState } from "react";
+import "./App.css";
+import ChatWindow from "./components/ChatWindow";
+import MessageInput from "./components/MessageInput";
+
+interface MessageData {
+  text: string;
+  sender: "user" | "ai";
+}
+
+const SESSION_ID = "react";
 
 const App: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [messages, setMessages] = useState<MessageData[]>([]);
 
-  const runScript = (scriptName: string) => {
-    const newTask: Task = {
-      id: Date.now() + Math.random(), // Add random to avoid key collision in runAll
-      name: scriptName,
-      status: 'Running',
-      output: [],
-      startTime: Date.now(),
+  // Fetch initial chat history on component mount
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:3000/api/history?sessionId=${SESSION_ID}`
+        );
+        const history = await response.json();
+        setMessages(history);
+      } catch (error) {
+        console.error("Error fetching chat history:", error);
+        setMessages([{ text: "Failed to load chat history.", sender: "ai" }]);
+      }
     };
-    setTasks((prevTasks) => [...prevTasks, newTask]);
-    executeScriptLogic(newTask);
-  };
+    fetchHistory();
+  }, []); // Empty dependency array ensures this runs only once
 
-  const runAllScripts = () => {
-    const scripts = ['test', 'lint', 'build', 'deploy', 'stress-test'];
-    const newTasks: Task[] = [];
+  const handleSendMessage = async (message: string) => {
+    const userMessage: MessageData = { text: message, sender: "user" };
+    // Optimistically update the UI with the user's message
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
 
-    scripts.forEach(scriptName => {
-      const newTask: Task = {
-        id: Date.now() + Math.random(),
-        name: scriptName,
-        status: 'Running',
-        output: [],
-        startTime: Date.now(),
-      };
-      newTasks.push(newTask);
-    });
-
-    setTasks((prevTasks) => [...prevTasks, ...newTasks]);
-    
-    // Execute the logic for each new task after the state has been updated
-    newTasks.forEach(task => executeScriptLogic(task));
-  };
-
-  const executeScriptLogic = (task: Task) => {
-    const { id: taskId, name: scriptName } = task;
-
-    const updateTask = (id: number, updates: Partial<Task>) => {
-      setTasks((prevTasks) =>
-        prevTasks.map((task) => {
-          if (task.id === id) {
-            const updatedTask = { ...task, ...updates };
-            if (updates.status && (updates.status === 'Succeeded' || updates.status === 'Failed')) {
-              updatedTask.endTime = Date.now();
-            }
-            return updatedTask;
-          }
-          return task;
-        })
-      );
-    };
-
-    const appendOutput = (id: number, line: string) => {
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.id === id ? { ...task, output: [...task.output, line] } : task
-        )
-      );
-    };
-
-    switch (scriptName) {
-      case 'test':
-        setTimeout(() => {
-          appendOutput(taskId, `Script 'test' finished.`);
-          updateTask(taskId, { status: 'Succeeded' });
-        }, 2000);
-        break;
-      case 'lint':
-        setTimeout(() => {
-          appendOutput(taskId, `Script 'lint' finished.`);
-          updateTask(taskId, { status: 'Succeeded' });
-        }, 3000);
-        break;
-      case 'build':
-        appendOutput(taskId, 'Build process started...');
-        setTimeout(() => {
-          appendOutput(taskId, `Script 'build' finished.`);
-          updateTask(taskId, { status: 'Succeeded' });
-        }, 5000);
-        break;
-      case 'deploy':
-        setTimeout(() => {
-          const success = Math.random() < 0.5;
-          if (success) {
-            appendOutput(taskId, `Script 'deploy' finished.`);
-            updateTask(taskId, { status: 'Succeeded' });
-          } else {
-            appendOutput(taskId, 'Deployment failed.');
-            updateTask(taskId, { status: 'Failed' });
-          }
-        }, 6000);
-        break;
-      case 'stress-test':
-        for (let i = 1; i <= 5000; i++) {
-          appendOutput(taskId, `Generating log line ${i}...`);
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/chat?sessionId=${SESSION_ID}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
         }
-        setTimeout(() => {
-          updateTask(taskId, { status: 'Succeeded' });
-        }, 4000);
-        break;
+      );
+      const data = await response.json();
+      const aiMessage: MessageData = { text: data.message, sender: "ai" };
+      // Add the AI's response to the message list
+      setMessages((prevMessages) => [...prevMessages, aiMessage]);
+    } catch (error) {
+      console.error("Error fetching AI response:", error);
+      const errorMessage: MessageData = {
+        text: "Sorry, something went wrong.",
+        sender: "ai",
+      };
+      // Add an error message to the list
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
     }
   };
 
   return (
-    <div className="app-container">
-      <ScriptList onRunScript={runScript} onRunAll={runAllScripts} />
-      <Terminal
-        tasks={tasks}
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-      />
+    <div id="chat-container">
+      <div className="header">
+        <h1>React Chat</h1>
+      </div>
+      <ChatWindow messages={messages} />
+      <MessageInput onSendMessage={handleSendMessage} />
     </div>
   );
 };
