@@ -67,6 +67,7 @@ const DataTable: React.FC = () => {
 
     return (
         <div id="app">
+            <h1>React Table</h1>
             <div className="controls">
                 <input
                     type="search"
