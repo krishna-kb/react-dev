@@ -41,19 +41,14 @@ const App: React.FC = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message }),
-        }
-      );
-      const data = await response.json();
-      const aiMessage: MessageData = { text: data.message, sender: "ai" };
-      // Add the AI's response to the message list
-      setMessages((prevMessages) => [...prevMessages, aiMessage]);
-    } catch (error) {
-      console.error("Error fetching AI response:", error);
-      const errorMessage: MessageData = {
-        text: "Sorry, something went wrong.",
-        sender: "ai",
-      };
+                body: JSON.stringify({ message }),
+            });
+            const aiMessage: MessageData = await response.json();
+            // Add the AI's response to the message list
+            setMessages(prevMessages => [...prevMessages, aiMessage]);
+        } catch (error) {
+            console.error('Error fetching AI response:', error);
+            const errorMessage: MessageData = { text: 'Sorry, something went wrong.', sender: 'ai' };
       // Add an error message to the list
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
     }

@@ -56,6 +56,7 @@ const userMessages = [
 // --- Helper to generate a new history ---
 const generateMockHistory = (count) => {
   const history = [];
+  const now = Date.now();
   for (let i = 0; i < count; i++) {
     history.push({
       text:
@@ -63,6 +64,7 @@ const generateMockHistory = (count) => {
           ? userMessages[i % userMessages.length]
           : gibberish[i % gibberish.length],
       sender: i % 2 === 0 ? "user" : "ai",
+      timestamp: now - (count - i) * 1000, // Simulate messages being 1 second apart
     });
   }
   return history;
@@ -100,13 +102,25 @@ app.post("/api/chat", (req, res) => {
     chatHistories[sessionId] = [];
   }
 
-  chatHistories[sessionId].push({ text: message, sender: "user" });
+  // Add user message with timestamp
+  chatHistories[sessionId].push({
+    text: message,
+    sender: "user",
+    timestamp: Date.now(),
+  });
 
+  // Generate and add AI response with timestamp
   const aiResponse = gibberish[Math.floor(Math.random() * gibberish.length)];
-  chatHistories[sessionId].push({ text: aiResponse, sender: "ai" });
+  const aiMessage = {
+    text: aiResponse,
+    sender: "ai",
+    timestamp: Date.now() + 500,
+  }; // Simulate AI "thinking" time
+  chatHistories[sessionId].push(aiMessage);
 
   setTimeout(() => {
-    res.json({ message: aiResponse });
+    // Send back the full AI message object for consistency
+    res.json(aiMessage);
   }, 500);
 });
 

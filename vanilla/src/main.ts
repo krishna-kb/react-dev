@@ -46,7 +46,7 @@ chatForm.addEventListener("submit", async (e) => {
       }
     );
     const data = await response.json();
-    appendMessage(data.message, "ai");
+    appendMessage(data.text, "ai");
   } catch (error) {
     console.error("Error fetching AI response:", error);
     appendMessage("Sorry, something went wrong.", "ai");
