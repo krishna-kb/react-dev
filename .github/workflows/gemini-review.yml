@@ -98,7 +98,7 @@ jobs:
 
       - name: 'Run Gemini pull request review'
         # reviews code with detailed set of instructions for the Gemini 
-        uses: 'google-github-actions/run-gemini-cli@v0'
+        uses: 'megha1188/run-gemini-cli@main'
         id: 'gemini_pr_review'
         env:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
