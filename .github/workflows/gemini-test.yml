@@ -116,14 +116,29 @@ jobs:
         run: |-
           git config --global user.name 'gemini-cli[bot]'
           git config --global user.email 'gemini-cli[bot]@users.noreply.github.com'
+
+      - name: "Get PR Details"
+        id: "get_pr_details"
+        if: ${{ steps.get_context.outputs.is_pr == 'true' }}
+        env:
+          GITHUB_TOKEN: "${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}"
+          ISSUE_NUMBER: "${{ steps.get_context.outputs.issue_number }}"
+          REPOSITORY: "${{ github.repository }}"
+        run: |
+          PR_DATA=$(gh pr view "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --json headRefName,headRepository)
+          HEAD_REF_NAME=$(echo "$PR_DATA" | jq -r '.headRefName')
+          HEAD_REPO_NAME=$(echo "$PR_DATA" | jq -r '.headRepository.nameWithOwner')
+          echo "head_ref_name=${HEAD_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "head_repo_name=${HEAD_REPO_NAME}" >> "$GITHUB_OUTPUT"
+
       - name: "Checkout PR branch"
         if: |-
           ${{  steps.get_context.outputs.is_pr == 'true' }}
         uses: "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683" # ratchet:actions/checkout@v4
         with:
           token: "${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}"
-          repository: "${{ github.repository }}"
-          ref: "refs/pull/${{ steps.get_context.outputs.issue_number }}/head"
+          repository: "${{ steps.get_pr_details.outputs.head_repo_name }}"
+          ref: "${{ steps.get_pr_details.outputs.head_ref_name }}"
           fetch-depth: 0
 
       - name: "Checkout main branch"
