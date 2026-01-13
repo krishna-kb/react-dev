@@ -1,6 +1,7 @@
 {
   "name": "react-dev",
   "version": "1.0.0",
+  "devDependencies": {},
   "workspaces": [
     "packages/*"
   ],
