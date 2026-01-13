@@ -7,6 +7,11 @@ on:
         type: 'string'
         description: 'Any additional context from the request'
         required: false
+      is_pull_request:
+        type: 'boolean'
+        description: 'Whether this is a pull request'
+        required: false
+        default: false
 
 concurrency:
   group: '${{ github.workflow }}-triage-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'

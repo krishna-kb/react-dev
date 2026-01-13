@@ -17,6 +17,21 @@ on:
   issue_comment:
     types:
       - 'created'
+  workflow_dispatch:
+    inputs:
+      request:
+        description: 'The request to process (e.g. @gemini-cli hello)'
+        required: true
+        type: 'string'
+      issue_number:
+        description: 'The issue or pull request number to act on'
+        required: false
+        type: 'string'
+      is_pull_request:
+        description: 'Whether this is a pull request'
+        required: false
+        type: 'boolean'
+        default: true
 
 defaults:
   run:
@@ -46,7 +61,9 @@ jobs:
     # For PRs: only if not from a fork
     # For issues: only on open/reopen
     # For comments: only if user types @gemini-cli and is OWNER/MEMBER/COLLABORATOR
+    # For dispatch: always
     if: |-
+      github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.fork == false
@@ -67,7 +84,12 @@ jobs:
       command: '${{ steps.extract_command.outputs.command }}'
       request: '${{ steps.extract_command.outputs.request }}'
       additional_context: '${{ steps.extract_command.outputs.additional_context }}'
-      issue_number: '${{ github.event.pull_request.number || github.event.issue.number }}'
+      issue_number: '${{ steps.extract_command.outputs.issue_number }}'
+      is_pull_request: '${{ steps.extract_command.outputs.is_pull_request }}'
+      title: '${{ steps.extract_command.outputs.title }}'
+      body: '${{ steps.extract_command.outputs.body }}'
+      head_ref: '${{ steps.extract_command.outputs.head_ref }}'
+      is_fork: '${{ steps.extract_command.outputs.is_fork }}'
     steps:
       - name: 'Mint identity token'
         id: 'mint_identity_token'
@@ -86,12 +108,55 @@ jobs:
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea' # ratchet:actions/github-script@v7
         env:
           EVENT_TYPE: '${{ github.event_name }}.${{ github.event.action }}'
-          REQUEST: '${{ github.event.comment.body || github.event.review.body || github.event.issue.body }}'
+          REQUEST: '${{ github.event.inputs.request || github.event.comment.body || github.event.review.body || github.event.issue.body }}'
+          ISSUE_NUMBER: '${{ github.event.inputs.issue_number || github.event.pull_request.number || github.event.issue.number }}'
+          IS_PULL_REQUEST: '${{ github.event.inputs.is_pull_request || !!github.event.pull_request }}'
         with:
           script: |
             const eventType = process.env.EVENT_TYPE;
             const request = process.env.REQUEST;
+            const issueNumber = process.env.ISSUE_NUMBER;
+            const isPullRequest = process.env.IS_PULL_REQUEST === 'true';
+            
             core.setOutput('request', request);
+            core.setOutput('issue_number', issueNumber);
+            core.setOutput('is_pull_request', isPullRequest);
+
+            let title = '';
+            let body = '';
+            let headRef = '';
+            let isFork = false;
+
+            if (issueNumber) {
+              try {
+                if (isPullRequest) {
+                  const { data: pr } = await github.rest.pulls.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: parseInt(issueNumber),
+                  });
+                  title = pr.title;
+                  body = pr.body;
+                  headRef = pr.head.ref;
+                  isFork = pr.head.repo.fork;
+                } else {
+                  const { data: issue } = await github.rest.issues.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: parseInt(issueNumber),
+                  });
+                  title = issue.title;
+                  body = issue.body;
+                }
+              } catch (error) {
+                core.warning(`Failed to fetch metadata for #${issueNumber}: ${error.message}`);
+              }
+            }
+
+            core.setOutput('title', title);
+            core.setOutput('body', body);
+            core.setOutput('head_ref', headRef);
+            core.setOutput('is_fork', isFork);
 
             if (eventType === 'pull_request.opened') {
               core.setOutput('command', 'review');
@@ -112,9 +177,11 @@ jobs:
             }
 
       - name: 'Acknowledge request'
+        if: |-
+          ${{ steps.extract_command.outputs.issue_number != '' }}
         env:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
+          ISSUE_NUMBER: '${{ steps.extract_command.outputs.issue_number }}'
           MESSAGE: |-
             🤖 Hi @${{ github.actor }}, I've received your request, and I'm working on it now! You can track my progress [in the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
           REPOSITORY: '${{ github.repository }}'
@@ -135,6 +202,7 @@ jobs:
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
+      is_pull_request: '${{ fromJSON(needs.dispatch.outputs.is_pull_request) }}'
     secrets: 'inherit'
 
   triage:
@@ -149,6 +217,7 @@ jobs:
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
+      is_pull_request: '${{ fromJSON(needs.dispatch.outputs.is_pull_request) }}'
     secrets: 'inherit'
 
   invoke:
@@ -163,6 +232,12 @@ jobs:
       pull-requests: 'write'
     with:
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
+      is_pull_request: '${{ fromJSON(needs.dispatch.outputs.is_pull_request) }}'
+      issue_number: '${{ needs.dispatch.outputs.issue_number }}'
+      title: '${{ needs.dispatch.outputs.title }}'
+      description: '${{ needs.dispatch.outputs.body }}'
+      head_ref: '${{ needs.dispatch.outputs.head_ref }}'
+      is_fork: '${{ fromJSON(needs.dispatch.outputs.is_fork) }}'
     secrets: 'inherit'
 
   fallthrough:
@@ -192,9 +267,11 @@ jobs:
           permission-pull-requests: 'write'
 
       - name: 'Send failure comment'
+        if: |-
+          ${{ needs.dispatch.outputs.issue_number != '' }}
         env:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
-          ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
+          ISSUE_NUMBER: '${{ needs.dispatch.outputs.issue_number }}'
           MESSAGE: |-
             🤖 I'm sorry @${{ github.actor }}, but I was unable to process your request. Please [see the logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for more details.
           REPOSITORY: '${{ github.repository }}'
