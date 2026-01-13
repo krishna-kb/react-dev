@@ -1,6 +1,21 @@
 name: '▶️ Gemini Invoke'
 
 on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'The issue or PR number'
+        required: true
+        type: string
+      is_pull_request:
+        description: 'Treat as Pull Request?'
+        required: false
+        default: false
+        type: boolean
+      additional_context:
+        description: 'Any additional context from the request'
+        required: false
+        type: string
   workflow_call:
     inputs:
       additional_context:
@@ -9,7 +24,7 @@ on:
         required: false
 
 concurrency:
-  group: '${{ github.workflow }}-invoke-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number }}'
+  group: '${{ github.workflow }}-invoke-${{ github.event_name }}-${{ inputs.issue_number || github.event.pull_request.number || github.event.issue.number }}'
   cancel-in-progress: false
 
 defaults:
@@ -37,18 +52,32 @@ jobs:
           permission-issues: 'write'
           permission-pull-requests: 'write'
 
+      - name: 'Fetch context'
+        id: 'fetch_context'
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          ISSUE: '${{ inputs.issue_number }}'
+          REPO: '${{ github.repository }}'
+        run: |
+          gh issue view "$ISSUE" --repo "$REPO" --json title,body > context.json
+          echo "title=$(jq -r .title context.json)" >> "$GITHUB_OUTPUT"
+          echo "description<<EOF" >> "$GITHUB_OUTPUT"
+          jq -r .body context.json >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: 'Run Gemini CLI'
         id: 'run_gemini'
         uses: 'google-github-actions/run-gemini-cli@fix/branch_PR' # ratchet:exclude
         env:
-          TITLE: '${{ github.event.pull_request.title || github.event.issue.title }}'
-          DESCRIPTION: '${{ github.event.pull_request.body || github.event.issue.body }}'
+          TITLE: '${{ steps.fetch_context.outputs.title || github.event.pull_request.title || github.event.issue.title }}'
+          DESCRIPTION: '${{ steps.fetch_context.outputs.description || github.event.pull_request.body || github.event.issue.body }}'
           EVENT_NAME: '${{ github.event_name }}'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           HEAD_REF: '${{ github.event.pull_request.head.ref }}'
           IS_FORK: '${{ github.event.pull_request.head.repo.fork || false }}'
-          IS_PULL_REQUEST: '${{ !!github.event.pull_request }}'
-          ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
+          IS_PULL_REQUEST: '${{ inputs.is_pull_request || !!github.event.pull_request }}'
+          ISSUE_NUMBER: '${{ inputs.issue_number || github.event.pull_request.number || github.event.issue.number }}'
           REPOSITORY: '${{ github.repository }}'
           ADDITIONAL_CONTEXT: '${{ inputs.additional_context }}'
         with:
