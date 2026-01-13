@@ -3,3 +3,8 @@
 
 # Build artifacts
 **/build
+# gemini-cli settings
+.gemini/
+
+# GitHub App credentials
+gha-creds-*.json
