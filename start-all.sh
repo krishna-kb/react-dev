@@ -23,7 +23,7 @@ set -e
 
 echo ""
 echo "--- Setting up and starting all applications ---"
-
+cd packages/
 # --- API Server ---
 echo "[1/3] Starting API server..."
 cd api
