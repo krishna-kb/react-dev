@@ -1,7 +1,7 @@
 {
   "name": "vanilla-chat",
   "version": "1.0.0",
-  "main": "./server.js",
+  "main": "build/main.js",
   "scripts": {
     "start": "node server.js",
     "build": "tsc -p ."
