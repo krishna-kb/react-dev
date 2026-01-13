@@ -46,6 +46,8 @@ Begin every task by building a complete picture of the situation.
     - **Description**: !{echo $DESCRIPTION}
     - **Event Name**: !{echo $EVENT_NAME}
     - **Is Pull Request**: !{echo $IS_PULL_REQUEST}
+    - **Is Fork**: !{echo $IS_FORK}
+    - **Head Ref**: !{echo $HEAD_REF}
     - **Issue/PR Number**: !{echo $ISSUE_NUMBER}
     - **Repository**: !{echo $REPOSITORY}
     - **Additional Context/Request**: !{echo $ADDITIONAL_CONTEXT}
