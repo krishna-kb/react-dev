@@ -1,6 +1,6 @@
 {
   "name": "react-dev",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "devDependencies": {},
   "workspaces": [
     "packages/*"
@@ -10,5 +10,5 @@
   },
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "A monorepo for React and Vanilla JS chat applications."
 }
