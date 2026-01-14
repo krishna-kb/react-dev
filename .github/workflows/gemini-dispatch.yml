@@ -103,6 +103,8 @@ jobs:
               core.setOutput('additional_context', additionalContext);
             } else if (request.startsWith("@gemini-cli /triage")) {
               core.setOutput('command', 'triage');
+            } else if (request.startsWith("@gemini-cli /fix")) {
+              core.setOutput('command', 'fix');
             } else if (request.startsWith("@gemini-cli")) {
               const additionalContext = request.replace(/^@gemini-cli/, '').trim();
               core.setOutput('command', 'invoke');
